@@ -1,16 +1,16 @@
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
 #include "vmlinux.h"
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_core_read.h>
+#include <bpf/bpf_tracing.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-struct bpf_map_def SEC("maps") my_map = {
-        .type = BPF_MAP_TYPE_HASH,
-        .max_entries = 128,
-        .key_size = 64,
-        .value_size = sizeof(u64),
-        .map_flags = BPF_F_NO_PREALLOC,
-};
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, u32);
+    __type(value, int32);
+} my_map SEC(".maps");
 
 SEC("tracepoint/syscalls/sys_enter_execve")
 int bpf_prog(void *ctx) {

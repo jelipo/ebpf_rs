@@ -1,0 +1,12 @@
+[package]
+name = "hashmap"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+common = { path = "../common" }
+libbpf-cargo = "0.20.0"
+
+[build-dependencies]
+libbpf-cargo = "0.20.0"
