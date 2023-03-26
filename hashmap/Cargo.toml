@@ -3,10 +3,10 @@ name = "hashmap"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+libbpf-cargo = "0.20.0"
 
 [dependencies]
 common = { path = "../common" }
-libbpf-cargo = "0.20.0"
-
-[build-dependencies]
-libbpf-cargo = "0.20.0"
+libbpf-rs = "0.20.0"
+anyhow = "1.0"
