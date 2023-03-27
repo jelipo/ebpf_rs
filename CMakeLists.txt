@@ -7,4 +7,4 @@ include_directories(include)
 
 add_executable(ebpf-rs
         hashmap/src/hashmap.bpf.c
-        )
+        tracepoint/src/tracepoint.bpf.c)

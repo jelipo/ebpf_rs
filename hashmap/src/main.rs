@@ -10,12 +10,11 @@ mod runqslower {
     include!("./hashmap.bpf.rs");
 }
 
-
 fn main() -> Result<()> {
-    let result = common::bump_memlock_rlimit();
+    // 初始化
+    common::bump_memlock_rlimit()?;
     let builder = HashmapSkelBuilder::default();
     let open_skel = builder.open()?;
-    // TODO 写入参数
     let mut skel = open_skel.load()?;
     skel.attach()?;
     let mut key_bytes = [0u8; 4];
@@ -25,9 +24,11 @@ fn main() -> Result<()> {
         thread::sleep(Duration::from_secs(3));
         let option = skel.maps_mut().my_map().lookup(&key_bytes, MapFlags::ANY)?;
         match option {
-            None => { println!("无数据") }
-            Some(data) => { println!("数据长度：{}", data.len()); }
+            None => println!("无数据"),
+            Some(data) => {
+                let count = u32::from_le_bytes((&data)[..4].try_into()?);
+                println!("count：{}", count);
+            }
         }
     }
-    Ok(())
 }

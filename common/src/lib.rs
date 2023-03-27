@@ -1,3 +1,5 @@
+pub mod convert;
+
 use anyhow::{bail, Result};
 
 pub fn bump_memlock_rlimit() -> Result<()> {
@@ -11,3 +13,8 @@ pub fn bump_memlock_rlimit() -> Result<()> {
 
     Ok(())
 }
+
+pub fn check_root() -> Result<()> {
+    Ok(())
+}
+
