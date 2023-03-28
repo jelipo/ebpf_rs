@@ -1,5 +1,3 @@
-use std::env::current_dir;
-
 use libbpf_cargo::SkeletonBuilder;
 
 const SRC: &str = "src/tracepoint.bpf.c";

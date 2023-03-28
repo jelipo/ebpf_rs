@@ -4,7 +4,7 @@
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-const u32 listen_tgid;
+const volatile u32 listen_tgid;
 
 struct key_t {
     u32 tgid;
@@ -28,8 +28,9 @@ struct temp_value_t {
 
 int main() {}
 
-// Force emitting struct event into the ELF.
 const struct key_t *unused __attribute__((unused));
+
+const struct temp_key_t *unused1 __attribute__((unused));
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -42,9 +43,9 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(max_entries, 1024);
     __type(key, u32);
-    __uint(key_size, sizeof(__u32));
+    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(u64));
+    __uint(max_entries, 4096);
 } stack_traces SEC(".maps");
 
 struct {
@@ -77,9 +78,13 @@ inline void try_record_start(void *ctx, u32 prev_pid, u32 prev_tgid) {
     if (prev_tgid == 0) {
         return;
     }
-    if (prev_tgid == listen_tgid) {
+    if (prev_pid == prev_tgid) {
+        bpf_printk("record start %d   listen:%d", prev_tgid, listen_tgid);
+    }
+    if (prev_tgid != listen_tgid) {
         return;
     }
+
     struct temp_value_t value = {};
     value.start_time = bpf_ktime_get_ns();
     value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
@@ -96,9 +101,13 @@ inline void try_record_end(u32 next_pid, u32 next_tgid) {
     if (next_tgid == 0 || next_pid == 0) {
         return;
     }
-    if (next_tgid == listen_tgid) {
+    if (next_tgid == next_pid) {
+        bpf_printk("record end %d listen:%d", next_tgid, listen_tgid);
+    }
+    if (next_tgid != listen_tgid) {
         return;
     }
+
     struct temp_key_t key = {
             .pid = next_pid,
             .tgid = next_tgid
@@ -121,7 +130,7 @@ int BPF_PROG(sched_switch, bool preempt, struct task_struct *prev, struct task_s
     pid_t prev_tgid = prev->tgid;
 
     pid_t next_pid = next->pid;
-    pid_t next_tgid = next->pid;
+    pid_t next_tgid = next->tgid;
 
     try_record_start(ctx, prev_pid, prev_tgid);
     try_record_end(next_pid, next_tgid);
