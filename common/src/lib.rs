@@ -20,4 +20,3 @@ pub fn bump_memlock_rlimit() -> Result<()> {
 pub fn check_root() -> Result<()> {
     Ok(())
 }
-

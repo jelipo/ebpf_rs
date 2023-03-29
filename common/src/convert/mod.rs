@@ -1,7 +1,3 @@
-use std::mem::size_of;
-
-use anyhow::{anyhow, Result};
-
 // pub fn to_bpf_struct<T: Sized>(vec: Vec<u8>) -> Result<T>
 //     where [(); size_of::<T>()]:
 // {
