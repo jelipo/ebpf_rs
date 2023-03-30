@@ -9,15 +9,15 @@ use clap::Parser;
 use libbpf_rs::MapFlags;
 
 use crate::kallsyms::KallsymsCache;
+use crate::offcputime::offcputime_bss_types::key_t;
+use crate::offcputime::{OffcputimeMaps, OffcputimeSkelBuilder};
 use crate::procsyms::ProcsymsCache;
-use crate::runqslower::{TracepointMaps, TracepointSkelBuilder};
-use crate::runqslower::tracepoint_bss_types::key_t;
 
 mod kallsyms;
 mod procsyms;
 
-mod runqslower {
-    include!("./tracepoint.bpf.rs");
+mod offcputime {
+    include!("./offcputime.bpf.rs");
 }
 
 #[derive(Debug, Copy, Clone, Parser)]
@@ -35,17 +35,14 @@ fn main() -> Result<()> {
     let cmd = Command::parse();
     // 初始化
     common::bump_memlock_rlimit()?;
-    let builder = TracepointSkelBuilder::default();
+    let builder = OffcputimeSkelBuilder::default();
     let mut open_skel = builder.open()?;
     open_skel.rodata().listen_tgid = cmd.pid;
     let mut skel = open_skel.load()?;
     skel.attach()?;
     // 等待完成
-    println!("wait {} seconds", cmd.time);
     thread::sleep(Duration::from_secs(cmd.time));
     // 开始处理
-    println!("finished waiting");
-
     let maps = skel.maps();
     let key_iter = maps.pid_stack_counter().keys();
     let kallsyms_cache = KallsymsCache::new()?;
@@ -64,24 +61,24 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn print_kernel_stacks_by_id(maps: &TracepointMaps, kernel_stack_id: u32, cache: &KallsymsCache) -> Result<()> {
+fn print_kernel_stacks_by_id(maps: &OffcputimeMaps, kernel_stack_id: u32, cache: &KallsymsCache) -> Result<()> {
     let symbols_data = maps.stack_traces().lookup(&kernel_stack_id.to_ne_bytes(), MapFlags::ANY)?.ok_or(anyhow!("not found"))?;
     let symbols = symbols_data.chunks(8).map(NativeEndian::read_u64).collect::<Vec<_>>();
     for symbol in symbols.iter().rev() {
-        if *symbol == 0 { continue; }
-        let name = cache.search(*symbol);
-        print!(";{}", name);
+        if *symbol != 0 {
+            print!(";{}", cache.search(*symbol));
+        }
     }
     Ok(())
 }
 
-fn print_user_stacks_by_id(maps: &TracepointMaps, stack_id: u32, cache: &ProcsymsCache) -> Result<()> {
+fn print_user_stacks_by_id(maps: &OffcputimeMaps, stack_id: u32, cache: &ProcsymsCache) -> Result<()> {
     let symbols_data = maps.stack_traces().lookup(&stack_id.to_ne_bytes(), MapFlags::ANY)?.ok_or(anyhow!("not found"))?;
     let symbols = symbols_data.chunks(8).map(NativeEndian::read_u64).collect::<Vec<_>>();
     for symbol in symbols.iter().rev() {
-        if *symbol == 0 { continue; }
-        let name = cache.search(*symbol)?;
-        print!(";({:x}){}", symbol, name);
+        if *symbol != 0 {
+            print!(";{}", cache.search(*symbol)?);
+        }
     }
     Ok(())
 }
