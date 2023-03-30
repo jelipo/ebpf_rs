@@ -74,16 +74,9 @@ void increment_ns(u32 pid, u32 tgid, u64 usage_us, struct temp_value_t *temp_val
 
 // 尝试记录offcputime开始时间
 inline void try_record_start(void *ctx, u32 prev_pid, u32 prev_tgid) {
-    if (prev_tgid == 0) {
+    if (prev_tgid == 0 || prev_pid == 0 || prev_tgid != listen_tgid) {
         return;
     }
-    if (prev_pid == prev_tgid) {
-        bpf_printk("record start %d   listen:%d", prev_tgid, listen_tgid);
-    }
-    if (prev_tgid != listen_tgid) {
-        return;
-    }
-
     struct temp_value_t value = {};
     value.start_time = bpf_ktime_get_ns();
     value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
@@ -98,13 +91,9 @@ inline void try_record_start(void *ctx, u32 prev_pid, u32 prev_tgid) {
 
 // 尝试记录offcputime结束并计算时间
 inline void try_record_end(u32 next_pid, u32 next_tgid) {
-    if (next_tgid == 0 || next_pid == 0) {
+    if (next_tgid == 0 || next_pid == 0 || next_tgid != listen_tgid) {
         return;
     }
-    if (next_tgid != listen_tgid) {
-        return;
-    }
-
     struct temp_key_t key = {
             .pid = next_pid,
             .tgid = next_tgid
