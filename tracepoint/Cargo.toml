@@ -11,5 +11,6 @@ common = { path = "../common" }
 libbpf-rs = "0.20.0"
 anyhow = "1.0"
 clap = { version = "4.1", features = ["derive"] }
-sscanf = "0.4.0"
+proc-maps = "0.3.0"
 byteorder = "1.4.3"
+object = "0.30.3"

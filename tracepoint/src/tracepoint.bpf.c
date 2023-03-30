@@ -24,9 +24,8 @@ struct temp_value_t {
     u64 start_time;
     u64 user_stack_id;
     u64 kernel_stack_id;
+    u8 comm[16];
 };
-
-int main() {}
 
 const struct key_t *unused __attribute__((unused));
 
@@ -55,13 +54,13 @@ struct {
     __type(value, u64);
 } pid_stack_counter SEC(".maps");
 
-void increment_ns(u32 pid, u32 tgid, u64 usage_us, u64 kernel_stack_id, u64 user_stack_id) {
+void increment_ns(u32 pid, u32 tgid, u64 usage_us, struct temp_value_t *temp_value) {
     struct key_t key = {};
     key.tgid = tgid;
     key.pid = pid;
-    key.user_stack_id = user_stack_id;
-    key.kernel_stack_id = kernel_stack_id;
-    bpf_get_current_comm(&key.comm, sizeof(key.comm));
+    key.user_stack_id = temp_value->user_stack_id;
+    key.kernel_stack_id = temp_value->kernel_stack_id;
+    __builtin_memcpy(&key.comm, &temp_value->comm, sizeof(key.comm));
 
     u64 *total_usage_us = bpf_map_lookup_elem(&pid_stack_counter, &key);
     u64 result = 0;
@@ -89,6 +88,7 @@ inline void try_record_start(void *ctx, u32 prev_pid, u32 prev_tgid) {
     value.start_time = bpf_ktime_get_ns();
     value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
     value.kernel_stack_id = bpf_get_stackid(ctx, &stack_traces, 0);
+    bpf_get_current_comm(&value.comm, sizeof(value.comm));
     struct temp_key_t key = {
             .pid = prev_pid,
             .tgid = prev_tgid
@@ -100,9 +100,6 @@ inline void try_record_start(void *ctx, u32 prev_pid, u32 prev_tgid) {
 inline void try_record_end(u32 next_pid, u32 next_tgid) {
     if (next_tgid == 0 || next_pid == 0) {
         return;
-    }
-    if (next_tgid == next_pid) {
-        bpf_printk("record end %d listen:%d", next_tgid, listen_tgid);
     }
     if (next_tgid != listen_tgid) {
         return;
@@ -121,7 +118,7 @@ inline void try_record_end(u32 next_pid, u32 next_tgid) {
     u64 end_time = bpf_ktime_get_ns();
     // 计算出使用的时间，微秒
     u64 usage_us = (end_time - temp_value->start_time) / 1000;
-    increment_ns(next_pid, next_tgid, usage_us, temp_value->kernel_stack_id, temp_value->user_stack_id);
+    increment_ns(next_pid, next_tgid, usage_us, temp_value);
 }
 
 SEC("tp_btf/sched_switch")
