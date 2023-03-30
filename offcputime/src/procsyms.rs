@@ -97,7 +97,10 @@ fn link(maps: &[ProcSymsMap], pid: u32) -> Result<HashMap<String, Vec<ProcSymbol
             continue;
         }
         let path = format!("/proc/{:?}/root{}", pid, map.fd_file);
-        let file_data = std::fs::read(path)?;
+        let file_data = match std::fs::read(path) {
+            Ok(vec) => vec,
+            Err(_) => continue,
+        };
         let obj_file = match object::File::parse(file_data.as_slice()) {
             Ok(file) => file,
             Err(_) => continue,
