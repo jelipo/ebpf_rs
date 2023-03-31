@@ -59,10 +59,8 @@ impl ProcsymsCache {
     pub fn search(&self, address: u64) -> Result<&str> {
         let (file_fd_path, offset) = match self.maps.binary_search_by_key(&address, |sym| sym.vm_start as u64) {
             Ok(i) => (&self.maps[i].fd_file, self.maps[i].vm_start + self.maps[i].vm_pgoff),
+            Err(0) => return Ok(UNKNOWN),
             Err(i) => {
-                if i == 0 {
-                    return Ok(UNKNOWN);
-                }
                 let proc_sym = &self.maps[i - 1];
                 if address > proc_sym.vm_end as u64 {
                     return Ok(UNKNOWN);
@@ -78,7 +76,6 @@ impl ProcsymsCache {
         let name = match symbols.binary_search_by_key(&(offset as u64), |symbol| symbol.address) {
             Ok(i) => &symbols[i].name,
             Err(i) => {
-                let _symbol = &symbols[i];
                 let prev_symbol = &symbols[i - 1];
                 if offset as u64 > prev_symbol.address + prev_symbol.size {
                     return Ok(UNKNOWN);
