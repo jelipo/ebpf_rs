@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "hashmap",
-    "offcputime"
+    "offcputime",
+    "java-usdt"
 ]
 
 [profile.release]
