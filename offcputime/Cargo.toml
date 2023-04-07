@@ -14,3 +14,4 @@ clap = { version = "4.1", features = ["derive"] }
 proc-maps = "0.3.0"
 byteorder = "1.4.3"
 object = "0.30.3"
+cpp_demangle = "0.4.0"

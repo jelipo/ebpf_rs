@@ -9,6 +9,5 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 SEC("usdt")
 int BPF_USDT(gc_begin, void *arg1) {
     bpf_printk("USDT gc_begin arg1 = %lx", arg1);
-    bpf_usdt_arg(ctx,0,)
     return 0;
 }

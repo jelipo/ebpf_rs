@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::string::ToString;
 
 use anyhow::Result;
-use object::{Object, ObjectSymbol};
+use cpp_demangle::Symbol;
+use object::{Object, ObjectSymbol, ObjectSymbolTable};
 
 pub struct ProcsymsCache {
     maps: Vec<ProcSymsMap>,
@@ -75,6 +76,7 @@ impl ProcsymsCache {
 
         let name = match symbols.binary_search_by_key(&(offset as u64), |symbol| symbol.address) {
             Ok(i) => &symbols[i].name,
+            Err(0) => return Ok(UNKNOWN),
             Err(i) => {
                 let prev_symbol = &symbols[i - 1];
                 if offset as u64 > prev_symbol.address + prev_symbol.size {
@@ -102,11 +104,24 @@ fn link(maps: &[ProcSymsMap], pid: u32) -> Result<HashMap<String, Vec<ProcSymbol
             Ok(file) => file,
             Err(_) => continue,
         };
-        let symbols = obj_file.dynamic_symbols().collect::<Vec<_>>();
+        let mut symbols = obj_file.dynamic_symbols().collect::<Vec<_>>();
+        if let Some(table) = obj_file.symbol_table() {
+            let mut symbol_tables = table.symbols().collect::<Vec<_>>();
+            symbols.append(&mut symbol_tables)
+        }
         let mut custom_symbols = symbols
             .iter()
             .map(|symbol| ProcSymbol {
-                name: symbol.name().unwrap_or(UNKNOWN).to_string(),
+                name: match symbol.name() {
+                    Ok(name) => match &name[..1] {
+                        "_" => match Symbol::new(name) {
+                            Ok(s) => s.to_string(),
+                            Err(_) => name.to_string()
+                        },
+                        _ => name.to_string(),
+                    },
+                    Err(_) => UNKNOWN.to_string()
+                },
                 address: symbol.address(),
                 size: symbol.size(),
             })
