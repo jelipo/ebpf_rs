@@ -1,0 +1,13 @@
+[package]
+name = "drop"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+libbpf-cargo = "0.20.0"
+
+[dependencies]
+common = { path = "../common" }
+libbpf-rs = "0.20.0"
+anyhow = "1.0"
+clap = { version = "4.1", features = ["derive"] }
