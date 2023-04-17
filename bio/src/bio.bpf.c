@@ -60,32 +60,34 @@ struct {
     __type(value, struct value_t);
 } pid_stack_counter SEC(".maps");
 
-//SEC("tp_btf/block_rq_issue")
-//int BPF_PROG(bio_start, struct request *rq) {
-//    __u64 pid_tgid = bpf_get_current_pid_tgid();
-//    u32 tgid = pid_tgid >> 32;
-//    if (tgid != listen_tgid) {
-//        return 0;
-//    }
-//    u32 pid = pid_tgid;
-//    // 记录
-//    struct temp_key_t key = {
-//            .pid = pid,
-//            .tgid = tgid
-//    };
-//    u32 len = rq->__data_len;
-//    struct temp_value_t value = {};
-//    value.start_time = bpf_ktime_get_ns();
-//    value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
-//    value.len = len;
-//    bpf_map_update_elem(&temp_pid_status, &key, &value, BPF_ANY);
-//    return 0;
-//}
+SEC("tp_btf/block_rq_issue")
+int BPF_PROG(bio_start, struct request *rq) {
+    __u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tgid = pid_tgid >> 32;
+    if (tgid != listen_tgid) {
+        return 0;
+    }
+    bpf_printk("start: %d", tgid);
+    u32 pid = pid_tgid;
+    // 记录
+    struct temp_key_t key = {
+            .pid = pid,
+            .tgid = tgid
+    };
+    u32 len = rq->__data_len;
+    struct temp_value_t value = {};
+    value.start_time = bpf_ktime_get_ns();
+    value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
+    value.len = len;
+    bpf_map_update_elem(&temp_pid_status, &key, &value, BPF_ANY);
+    return 0;
+}
 
 SEC("tp_btf/block_bio_complete")
 int BPF_PROG(bio_complete, struct request_queue *q, struct bio *bio) {
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 tgid = pid_tgid >> 32;
+    bpf_printk("end: %d", tgid);
     if (tgid != listen_tgid) {
         return 0;
     }
@@ -113,12 +115,12 @@ int BPF_PROG(bio_complete, struct request_queue *q, struct bio *bio) {
             .pid=pid_tgid,
             .user_stack_id=temp_value->user_stack_id,
     };
-    struct value_t *value_t;
-    value_t = bpf_map_lookup_elem(&pid_stack_counter, &key_t);
+    struct value_t *value_t = bpf_map_lookup_elem(&pid_stack_counter, &key_t);
     struct value_t new_value;
     if (value_t != NULL) {
         new_value = *value_t;
     } else {
+        // 为了防止验证器不过，需要给new_value设置0
         __builtin_memset(&new_value, 0, sizeof(new_value));
     }
     if (temp_value->len > new_value.max_len) {
