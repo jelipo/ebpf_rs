@@ -8,13 +8,11 @@ use byteorder::{ByteOrder, NativeEndian};
 use clap::Parser;
 use libbpf_rs::MapFlags;
 
-use crate::kallsyms::KallsymsCache;
+use common::stack::kallsyms::KallsymsCache;
+use common::stack::procsyms::ProcsymsCache;
+
 use crate::offcputime::offcputime_bss_types::key_t;
 use crate::offcputime::{OffcputimeMaps, OffcputimeSkelBuilder};
-use crate::procsyms::ProcsymsCache;
-
-mod kallsyms;
-mod procsyms;
 
 mod offcputime {
     include!("./offcputime.bpf.rs");

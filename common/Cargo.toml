@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 libc = "0.2"
 anyhow = "1.0"
+cpp_demangle = "0.4.0"
+object = "0.30.3"
+proc-maps = "0.3.0"

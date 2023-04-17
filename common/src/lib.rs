@@ -1,6 +1,7 @@
-pub mod convert;
-
 use anyhow::{bail, Result};
+
+pub mod convert;
+pub mod stack;
 
 pub fn bump_memlock_rlimit() -> Result<()> {
     let rlimit = libc::rlimit {
@@ -11,9 +12,5 @@ pub fn bump_memlock_rlimit() -> Result<()> {
         bail!("Failed to increase rlimit");
     }
 
-    Ok(())
-}
-
-pub fn check_root() -> Result<()> {
     Ok(())
 }

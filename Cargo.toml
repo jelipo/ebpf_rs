@@ -3,7 +3,8 @@ members = [
     "hashmap",
     "offcputime",
     "java-usdt",
-    "drop"
+    "drop",
+    "bio"
 ]
 
 [profile.release]

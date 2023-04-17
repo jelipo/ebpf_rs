@@ -10,4 +10,5 @@ add_executable(ebpf-rs
         offcputime/src/offcputime.bpf.c
         java-usdt/src/javausdt.bpf.c
         drop/src/drop.bpf.c
+        bio/src/bio.bpf.c
         )

@@ -112,10 +112,13 @@ fn link(maps: &[ProcSymsMap], pid: u32) -> Result<HashMap<String, Vec<ProcSymbol
         let mut custom_symbols = symbols
             .iter()
             .map(|symbol| ProcSymbol {
-                name: symbol.name().map(|name| match &name[..1] {
-                    "_" => Symbol::new(name).map(|s| s.to_string()).unwrap_or(name.to_string()),
-                    _ => name.to_string(),
-                }).unwrap_or(UNKNOWN.to_string()),
+                name: symbol
+                    .name()
+                    .map(|name| match &name[..1] {
+                        "_" => Symbol::new(name).map(|s| s.to_string()).unwrap_or(name.to_string()),
+                        _ => name.to_string(),
+                    })
+                    .unwrap_or(UNKNOWN.to_string()),
                 address: symbol.address(),
                 size: symbol.size(),
             })

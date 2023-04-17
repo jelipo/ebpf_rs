@@ -1,5 +1,5 @@
 [package]
-name = "offcputime"
+name = "bio"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,4 +11,5 @@ common = { path = "../common" }
 libbpf-rs = "0.20.0"
 anyhow = "1.0"
 clap = { version = "4.1", features = ["derive"] }
+proc-maps = "0.3.0"
 byteorder = "1.4.3"
