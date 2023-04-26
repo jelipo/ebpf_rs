@@ -101,7 +101,6 @@ int BPF_PROG(bio_start, struct request *rq) {
     if (pid_data == NULL) {
         return 0;
     }
-    bpf_printk("issue tgid:%d", pid_data->tgid);
     u32 pid = pid_data->pid;
     // 记录
     struct temp_key_t key = {
@@ -124,7 +123,6 @@ int BPF_PROG(bio_complete, struct request *rq, blk_status_t error, unsigned int 
     if (pid_data == NULL) {
         return 0;
     }
-    bpf_printk("complete tgid:%d", pid_data->tgid);
     u32 pid = pid_data->pid;
     struct temp_key_t key = {
             .pid = pid,
