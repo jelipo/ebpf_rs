@@ -1,6 +1,7 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
@@ -33,9 +34,24 @@ struct temp_value_t {
     u32 len;
 };
 
+struct piddata {
+    u32 tgid;
+    u32 pid;
+    u32 user_stack_id;
+};
+
 const struct key_t *unused __attribute__((unused));
 
 const struct temp_key_t *unused1 __attribute__((unused));
+
+const struct value_t *unused2 __attribute__((unused));
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, struct request *);
+    __type(value, struct piddata);
+} reqmap SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -60,59 +76,77 @@ struct {
     __type(value, struct value_t);
 } pid_stack_counter SEC(".maps");
 
-SEC("tp_btf/block_rq_issue")
-int BPF_PROG(bio_start, struct request *rq) {
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
+inline int trace_pid(void *ctx, struct request *rq, u32 tgid, u32 pid) {
+    struct piddata piddata = {};
+    piddata.tgid = tgid;
+    piddata.pid = pid;
+    piddata.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
+    bpf_map_update_elem(&reqmap, &rq, &piddata, BPF_ANY);
+    return 0;
+}
+
+SEC("fentry/__blk_account_io_start")
+int BPF_PROG(blk_account_io_start, struct request *rq) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 tgid = pid_tgid >> 32;
     if (tgid != listen_tgid) {
         return 0;
     }
-    bpf_printk("start: %d", tgid);
-    u32 pid = pid_tgid;
+    return trace_pid(ctx, rq, tgid, pid_tgid);
+}
+
+SEC("tp_btf/block_rq_issue")
+int BPF_PROG(bio_start, struct request *rq) {
+    struct piddata *pid_data = bpf_map_lookup_elem(&reqmap, &rq);
+    if (pid_data == NULL) {
+        return 0;
+    }
+    bpf_printk("issue tgid:%d", pid_data->tgid);
+    u32 pid = pid_data->pid;
     // 记录
     struct temp_key_t key = {
             .pid = pid,
-            .tgid = tgid
+            .tgid = pid_data->tgid
     };
-    u32 len = rq->__data_len;
+
+    u32 len = BPF_CORE_READ(rq, __data_len);
     struct temp_value_t value = {};
     value.start_time = bpf_ktime_get_ns();
-    value.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
+    value.user_stack_id = pid_data->user_stack_id;
     value.len = len;
     bpf_map_update_elem(&temp_pid_status, &key, &value, BPF_ANY);
     return 0;
 }
 
-SEC("tp_btf/block_bio_complete")
-int BPF_PROG(bio_complete, struct request_queue *q, struct bio *bio) {
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 tgid = pid_tgid >> 32;
-    bpf_printk("end: %d", tgid);
-    if (tgid != listen_tgid) {
+SEC("tp_btf/block_rq_complete")
+int BPF_PROG(bio_complete, struct request *rq, blk_status_t error, unsigned int nr_bytes) {
+    struct piddata *pid_data = bpf_map_lookup_elem(&reqmap, &rq);
+    if (pid_data == NULL) {
         return 0;
     }
-    u32 pid = pid_tgid;
+    bpf_printk("complete tgid:%d", pid_data->tgid);
+    u32 pid = pid_data->pid;
     struct temp_key_t key = {
             .pid = pid,
-            .tgid = tgid
+            .tgid = pid_data->tgid
     };
     struct temp_value_t *temp_value = bpf_map_lookup_elem(&temp_pid_status, &key);
     if (temp_value == NULL) {
         return 0;
     }
-    // 计算用时
-    u32 ms = (bpf_ktime_get_ns() - temp_value->start_time) / 1000;
+    // 计算用时(微秒)
+    u32 us = (bpf_ktime_get_ns() - temp_value->start_time) / 1000;
     int i = 0;
     for (; i < DISTRIBUTION_COUNT_LEN; ++i) {
-        u64 max = 2 << (i + 1);
-        if (ms < max) {
+        u64 max = 1 << i;
+        if (us < max) {
             break;
         }
     }
     // 查找缓存
     struct key_t key_t = {
-            .tgid=tgid,
-            .pid=pid_tgid,
+            .tgid=pid_data->tgid,
+            .pid=pid_data->pid,
             .user_stack_id=temp_value->user_stack_id,
     };
     struct value_t *value_t = bpf_map_lookup_elem(&pid_stack_counter, &key_t);

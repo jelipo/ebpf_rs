@@ -3,15 +3,15 @@
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use byteorder::{ByteOrder, NativeEndian};
 use clap::Parser;
 use libbpf_rs::MapFlags;
 
 use common::stack::procsyms::ProcsymsCache;
 
-use crate::bio::bio_bss_types::key_t;
 use crate::bio::{BioMaps, BioSkelBuilder};
+use crate::bio::bio_bss_types::{key_t, value_t};
 
 mod bio {
     include!("./bio.bpf.rs");
@@ -44,21 +44,37 @@ fn main() -> Result<()> {
     let key_iter = maps.pid_stack_counter().keys();
     let procsyms_cache = ProcsymsCache::new(cmd.pid)?;
     for key_data in key_iter {
-        //let value_data = maps.pid_stack_counter().lookup(&key_data, MapFlags::ANY)?.expect("key not found");
+        let value_data = maps.pid_stack_counter().lookup(&key_data, MapFlags::ANY)?.expect("key not found");
         let key = unsafe { std::ptr::read_unaligned(key_data.as_ptr() as *const key_t) };
-        print_bio_stack(&maps, key.user_stack_id as u32, &procsyms_cache)?;
-        //println!(" {}", value);
+        let value = unsafe { std::ptr::read_unaligned(value_data.as_ptr() as *const value_t) };
+        print_bio_stack(&maps, &procsyms_cache, &key)?;
+        print_bio_distributions(&value.distribution_count);
+        println!("max_data:{} min_data:{}", value.max_len, value.min_len);
     }
     Ok(())
 }
 
-fn print_bio_stack(maps: &BioMaps, user_stack_id: u32, cache: &ProcsymsCache) -> Result<()> {
-    let symbols_data = maps.stack_traces().lookup(&user_stack_id.to_ne_bytes(), MapFlags::ANY)?.ok_or(anyhow!("not found"))?;
-    let symbols = symbols_data.chunks(8).map(NativeEndian::read_u64).collect::<Vec<_>>();
-    for symbol in symbols.iter().rev() {
-        if *symbol != 0 {
-            print!(";{}", cache.search(*symbol)?);
+fn print_bio_stack(maps: &BioMaps, cache: &ProcsymsCache, key: &key_t) -> Result<()> {
+    let symbols_data_result = maps.stack_traces().lookup(&key.user_stack_id.to_ne_bytes(), MapFlags::ANY)?
+        .ok_or_else(|| anyhow!("stack_user_id ({})  not found pid: {}",key.user_stack_id,key.pid));
+    match symbols_data_result {
+        Ok(symbols_data) => {
+            let symbols = symbols_data.chunks(8).map(NativeEndian::read_u64).collect::<Vec<_>>();
+            let symbol_names = symbols.iter().rev().filter(|&&symbol| symbol != 0).map(|&symbol| {
+                cache.search(symbol)
+            }).collect::<Result<Vec<&str>>>()?;
+            println!("stack: {}", symbol_names.join(","));
         }
+        Err(err) => println!("get stack has a error: {}", err),
     }
     Ok(())
+}
+
+fn print_bio_distributions(distribution_count: &[u32]) {
+    println!("{:>10} - {:<10}  : {:<8}", "min", "max", "count");
+    for (i, count) in distribution_count.iter().enumerate() {
+        let max = 1u32 << i;
+        let min = max >> 1;
+        println!("{:>10} - {:<10}  : {:<8}", min, max, count)
+    }
 }
