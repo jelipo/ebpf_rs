@@ -114,18 +114,12 @@ fn link(maps: &[ProcSymsMap], pid: u32) -> Result<HashMap<String, Vec<ProcSymbol
             .map(|symbol| ProcSymbol {
                 name: symbol
                     .name()
-                    .map(|name| {
-                        if name.contains("runtime.mstart.abi0") {
-                            let i = 0;
-                        }
-                        if name.is_empty() {
-                            name.to_string()
-                        } else {
-                            match &name[..1] {
-                                "_" => Symbol::new(name).map(|s| s.to_string()).unwrap_or(name.to_string()),
-                                _ => name.to_string(),
-                            }
-                        }
+                    .map(|name| match name.is_empty() {
+                        true => name.to_string(),
+                        false => match &name[..1] {
+                            "_" => Symbol::new(name).map(|s| s.to_string()).unwrap_or(name.to_string()),
+                            _ => name.to_string(),
+                        },
                     })
                     .unwrap_or(UNKNOWN.to_string()),
                 address: symbol.address(),

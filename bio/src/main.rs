@@ -3,15 +3,15 @@
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Result};
 use byteorder::{ByteOrder, NativeEndian};
 use clap::Parser;
 use libbpf_rs::MapFlags;
 
 use common::stack::procsyms::ProcsymsCache;
 
-use crate::bio::{BioMaps, BioSkelBuilder};
 use crate::bio::bio_bss_types::{key_t, value_t};
+use crate::bio::{BioMaps, BioSkelBuilder};
 
 mod bio {
     include!("./bio.bpf.rs");
@@ -55,14 +55,19 @@ fn main() -> Result<()> {
 }
 
 fn print_bio_stack(maps: &BioMaps, cache: &ProcsymsCache, key: &key_t) -> Result<()> {
-    let symbols_data_result = maps.stack_traces().lookup(&key.user_stack_id.to_ne_bytes(), MapFlags::ANY)?
-        .ok_or_else(|| anyhow!("stack_user_id ({})  not found pid: {}",key.user_stack_id,key.pid));
+    let symbols_data_result = maps
+        .stack_traces()
+        .lookup(&key.user_stack_id.to_ne_bytes(), MapFlags::ANY)?
+        .ok_or_else(|| anyhow!("stack_user_id ({})  not found pid: {}", key.user_stack_id, key.pid));
     match symbols_data_result {
         Ok(symbols_data) => {
             let symbols = symbols_data.chunks(8).map(NativeEndian::read_u64).collect::<Vec<_>>();
-            let symbol_names = symbols.iter().rev().filter(|&&symbol| symbol != 0).map(|&symbol| {
-                cache.search(symbol)
-            }).collect::<Result<Vec<&str>>>()?;
+            let symbol_names = symbols
+                .iter()
+                .rev()
+                .filter(|&&symbol| symbol != 0)
+                .map(|&symbol| cache.search(symbol))
+                .collect::<Result<Vec<&str>>>()?;
             println!("stack: {}", symbol_names.join(","));
         }
         Err(err) => println!("get stack has a error: {}", err),
