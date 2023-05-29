@@ -76,13 +76,12 @@ struct {
     __type(value, struct value_t);
 } pid_stack_counter SEC(".maps");
 
-inline int trace_pid(void *ctx, struct request *rq, u32 tgid, u32 pid) {
+inline void trace_pid(void *ctx, struct request *rq, u32 tgid, u32 pid) {
     struct piddata piddata = {};
     piddata.tgid = tgid;
     piddata.pid = pid;
     piddata.user_stack_id = bpf_get_stackid(ctx, &stack_traces, BPF_F_USER_STACK);
     bpf_map_update_elem(&reqmap, &rq, &piddata, BPF_ANY);
-    return 0;
 }
 
 SEC("fentry/__blk_account_io_start")
@@ -92,7 +91,8 @@ int BPF_PROG(blk_account_io_start, struct request *rq) {
     if (tgid != listen_tgid) {
         return 0;
     }
-    return trace_pid(ctx, rq, tgid, pid_tgid);
+    trace_pid(ctx, rq, tgid, pid_tgid);
+    return 0;
 }
 
 SEC("tp_btf/block_rq_issue")
