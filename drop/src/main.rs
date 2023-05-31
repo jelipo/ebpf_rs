@@ -1,7 +1,10 @@
 #![feature(slice_group_by)]
 
+
+
 use anyhow::Result;
 use clap::Parser;
+use crate::drop::DropSkelBuilder;
 
 mod drop {
     include!("./drop.bpf.rs");
@@ -19,5 +22,14 @@ struct Command {
 }
 
 fn main() -> Result<()> {
+    let cmd = Command::parse();
+    // 初始化
+    common::bump_memlock_rlimit()?;
+    let builder = DropSkelBuilder::default();
+    let mut open_skel = builder.open()?;
+    open_skel.progs_mut()
+    open_skel.rodata().listen_tgid = cmd.pid;
+    let mut skel = open_skel.load()?;
+    skel.attach()?;
     Ok(())
 }
