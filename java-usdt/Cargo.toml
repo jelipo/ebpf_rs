@@ -10,7 +10,7 @@ libbpf-cargo = "0.20.1"
 common = { path = "../common" }
 libbpf-rs = "0.20.1"
 anyhow = "1.0"
-clap = { version = "4.1", features = ["derive"] }
+clap = { version = "4.3", features = ["derive"] }
 proc-maps = "0.3.0"
 byteorder = "1.4.3"
-object = "0.30.3"
+object = "0.31"

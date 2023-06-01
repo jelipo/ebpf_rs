@@ -28,28 +28,12 @@ static bool is_TCP(void *data_begin, void *data_end) {
 }
 
 SEC("tc")
-int BPF_PROG(tc_ingress, struct __sk_buff *skb) {
+int tc_ingress(struct __sk_buff *skb) {
     void *data_end = (void *) (__u64) skb->data_end;
     void *data = (void *) (__u64) skb->data;
 
     if (is_TCP(data, data_end)) {
-
+        bpf_printk("Got IP packet");
     }
-
-    struct ethhdr *l2;
-    struct iphdr *l3;
-
-    if (skb->protocol != bpf_htons(ETH_P_IP))
-        return TC_ACT_OK;
-
-    l2 = data;
-    if ((void *) (l2 + 1) > data_end)
-        return TC_ACT_OK;
-
-    l3 = (struct iphdr *) (l2 + 1);
-    if ((void *) (l3 + 1) > data_end)
-        return TC_ACT_OK;
-
-    bpf_printk("Got IP packet: tot_len: %d, ttl: %d", bpf_ntohs(l3->tot_len), l3->ttl);
     return TC_ACT_OK;
 }
