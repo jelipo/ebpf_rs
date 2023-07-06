@@ -11,4 +11,4 @@ add_executable(ebpf-rs
         java-usdt/src/javausdt.bpf.c
         drop/src/drop.bpf.c
         bio/src/bio.bpf.c
-        )
+        protocol/src/protocol.bpf.c)
