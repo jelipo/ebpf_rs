@@ -6,7 +6,9 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 
 
 
-SEC("tp_btf/sched_switch")
-int BPF_PROG(sched_switch, bool preempt, struct task_struct *prev, struct task_struct *next) {
+SEC("tracepoint/syscalls/sys_enter_connect")
+
+SEC("tracepoint/syscalls/sys_exit_connect")
+int sys_exit_connect() {
 
 }
