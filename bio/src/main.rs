@@ -34,7 +34,6 @@ fn main() -> Result<()> {
     common::bump_memlock_rlimit()?;
     let builder = BioSkelBuilder::default();
     let mut open_skel = builder.open()?;
-    open_skel.progs_mut().bio_start().set_attach_type()
     open_skel.rodata().listen_tgid = cmd.pid;
     let mut skel = open_skel.load()?;
     skel.attach()?;
