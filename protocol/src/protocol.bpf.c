@@ -19,7 +19,12 @@ struct {
     __type(value, struct addr_info_t);
 } syscall_addr_id_map SEC(".maps");
 
-static inline void print_user_addr(struct sockaddr *address) {
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 24);
+} ip_info_map SEC(".maps");
+
+static inline void save_ip(struct sockaddr *address) {
     sa_family_t sa_family = BPF_CORE_READ_USER(address, sa_family);
     if (sa_family == PF_INET) {
         struct sockaddr_in *ipv4_addr = (void *) address;
@@ -58,14 +63,10 @@ SEC("tracepoint/syscalls/sys_exit_accept4")
 int sys_exit_accept4(struct trace_event_raw_sys_exit *ctx) {
     long int id = ctx->id;
     struct addr_info_t *addr_info = bpf_map_lookup_elem(&syscall_addr_id_map, &id);
-    if (addr_info == NULL) {
-        bpf_printk("can not found");
+    if (addr_info != NULL) {
+        struct sockaddr *address = BPF_PROBE_READ(addr_info, addr);
+        save_ip(address);
     }
-    struct sockaddr *address = BPF_PROBE_READ(addr_info, addr);
-    sa_family_t sa_family1 = BPF_CORE_READ(address, sa_family);
-    sa_family_t sa_family2 = BPF_CORE_READ_USER(address, sa_family);
-    bpf_printk("sa_family %d %d", sa_family1, sa_family2);
-    print_user_addr(address);
     return 0;
 }
 
@@ -83,14 +84,10 @@ SEC("tracepoint/syscalls/sys_exit_accept")
 int sys_exit_accept(struct trace_event_raw_sys_exit *ctx) {
     long int id = ctx->id;
     struct addr_info_t *addr_info = bpf_map_lookup_elem(&syscall_addr_id_map, &id);
-    if (addr_info == NULL) {
-        bpf_printk("can not found");
+    if (addr_info != NULL) {
+        struct sockaddr *address = BPF_PROBE_READ(addr_info, addr);
+        save_ip(address);
     }
-    struct sockaddr *address = BPF_PROBE_READ(addr_info, addr);
-    sa_family_t sa_family1 = BPF_CORE_READ(address, sa_family);
-    sa_family_t sa_family2 = BPF_CORE_READ_USER(address, sa_family);
-    bpf_printk("sa_family %d %d", sa_family1, sa_family2);
-    print_user_addr(address);
     return 0;
 }
 

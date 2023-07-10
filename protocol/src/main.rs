@@ -1,7 +1,8 @@
 #![feature(slice_group_by)]
 
-use std::thread::{sleep, Thread};
+use std::thread::sleep;
 use std::time::Duration;
+
 use anyhow::Result;
 
 use crate::protocol::ProtocolSkelBuilder;
@@ -14,8 +15,7 @@ fn main() -> Result<()> {
     // 初始化
     common::bump_memlock_rlimit()?;
     let builder = ProtocolSkelBuilder::default();
-    let mut open_skel = builder.open()?;
-
+    let open_skel = builder.open()?;
     let mut skel = open_skel.load()?;
     skel.attach()?;
 
