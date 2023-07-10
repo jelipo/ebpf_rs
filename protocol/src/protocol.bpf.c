@@ -93,29 +93,3 @@ int sys_exit_accept(struct trace_event_raw_sys_exit *ctx) {
     print_user_addr(address);
     return 0;
 }
-
-//SEC("tracepoint/syscalls/sys_enter_connect")
-//int sys_enter_connect() {
-//    return 0;
-//}
-//
-//SEC("tracepoint/syscalls/sys_exit_connect")
-//int sys_exit_connect() {
-//    return 0;
-//}
-//
-//SEC("tracepoint/syscalls/sys_enter_accept")
-//int sys_enter_accept() {
-//    return 0;
-//}
-//
-//SEC("tracepoint/syscalls/sys_exit_accept")
-//int sys_exit_accept() {
-//    return 0;
-//}
-//
-
-//SEC("tracepoint/syscalls/sys_exit_accept4")
-//int sys_exit_accept4() {
-//    return 0;
-//}
