@@ -1,9 +1,10 @@
 #![feature(slice_group_by)]
 
-use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
+use libbpf_rs::RingBufferBuilder;
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 
 use crate::protocol::ProtocolSkelBuilder;
 
@@ -19,6 +20,17 @@ fn main() -> Result<()> {
     let mut skel = open_skel.load()?;
     skel.attach()?;
 
-    sleep(Duration::from_secs(100));
+    let maps = skel.maps();
+    let mut rbb = RingBufferBuilder::new();
+    rbb.add(maps.address_ringbuf(), move |data| {
+        println!("{}", data.len());
+        0
+    })?;
+    let address_ringbuf = rbb.build()?;
+    loop {
+        if let Err(err) = address_ringbuf.poll(Duration::MAX) {
+            println!("poll error: {}", err);
+        }
+    }
     Ok(())
 }

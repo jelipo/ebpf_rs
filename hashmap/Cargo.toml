@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-libbpf-cargo = "0.20.1"
+libbpf-cargo = "0.21.1"
 
 [dependencies]
 common = { path = "../common" }
-libbpf-rs = "0.20.1"
+libbpf-rs = "0.21.1"
 anyhow = "1.0"
