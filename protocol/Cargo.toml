@@ -12,3 +12,4 @@ libbpf-rs = "0.21.1"
 anyhow = "1.0"
 clap = { version = "4.3", features = ["derive"] }
 byteorder = "1.4.3"
+plain = "0.2"

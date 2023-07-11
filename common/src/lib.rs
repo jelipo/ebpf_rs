@@ -2,6 +2,8 @@ use anyhow::{bail, Result};
 
 pub mod convert;
 pub mod stack;
+pub mod net;
+pub mod err;
 
 pub fn bump_memlock_rlimit() -> Result<()> {
     let rlimit = libc::rlimit {
