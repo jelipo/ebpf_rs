@@ -55,10 +55,12 @@ fn ip(buf: &[u8]) -> Result<()> {
         .map_err(to_err)?;
     let ip_addr = match AddressFamily::from_repr(addr_info.family as usize) {
         Some(AddressFamily::Inet) => unsafe {
-            IpAddr::V4(Ipv4Addr::from(addr_info.ip.ipv4_be.to_le()))
+            IpAddr::V4(Ipv4Addr::from(addr_info.ip_info.ip.ipv4_be.to_le()))
         }
         Some(AddressFamily::Inet6) => unsafe {
-            let ip = u128::from_be_bytes(addr_info.ip.ipv6_addr_be);
+            let x = addr_info.ip_info.ip.ipv6_be;
+
+            let ip = u128::from_be_bytes(addr_info.ip_info.ip.ipv6_be);
             match ip >> 32 {
                 0xFFFF => IpAddr::V4(Ipv4Addr::from(ip as u32)),
                 _ => IpAddr::V6(Ipv6Addr::from(ip))
@@ -66,7 +68,7 @@ fn ip(buf: &[u8]) -> Result<()> {
         }
         None => return Ok(()),
     };
-    let addr = SocketAddr::new(ip_addr, addr_info.port_le);
+    let addr = SocketAddr::new(ip_addr, addr_info.ip_info.port_le);
     println!("{}", addr);
     Ok(())
 }

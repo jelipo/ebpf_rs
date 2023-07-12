@@ -4,11 +4,17 @@ project(ebpf-rs C)
 set(CMAKE_C_STANDARD 11)
 
 include_directories(include)
+file(GLOB_RECURSE INCLUDE_DIRS "include/*")
+include_directories(${INCLUDE_DIRS})
+
+file(GLOB_RECURSE SOURCES "include/**/*.c")
 
 add_executable(ebpf-rs
+        ${SOURCES}
         hashmap/src/hashmap.bpf.c
         offcputime/src/offcputime.bpf.c
         java-usdt/src/javausdt.bpf.c
         drop/src/drop.bpf.c
         bio/src/bio.bpf.c
         protocol/src/protocol.bpf.c)
+
