@@ -25,7 +25,7 @@ static inline void accept_enter(struct trace_event_raw_sys_enter *ctx, void *add
     struct sockaddr *address = ((void *) ctx->args[1]);
     struct addr_temp_t addr_temp = {};
     addr_temp.addr = address;
-    addr_temp.sockfd=ctx->args[0];
+    addr_temp.sockfd = ctx->args[0];
     bpf_map_update_elem(address_map, &pid_tgid, &addr_temp, BPF_ANY);
 }
 
@@ -60,16 +60,13 @@ const struct addr_info_t *unused __attribute__((unused));
 
 static inline void accept_exit(void *address_map) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
+    // filter tgid
     struct addr_temp_t *addr_temp = bpf_map_lookup_elem(address_map, &pid_tgid);
     if (addr_temp == NULL) {
         return;
     }
     struct sockaddr *address = BPF_PROBE_READ(addr_temp, addr);
     sa_family_t sa_family = BPF_CORE_READ_USER(address, sa_family);
-    if (sa_family != PF_INET && sa_family != PF_INET6) {
-        bpf_map_delete_elem(address_map, &pid_tgid);
-        return;
-    }
     struct addr_info_t addr_info = {};
     if (sa_family == PF_INET) {
         struct sockaddr_in *ipv4_addr = (void *) address;
@@ -101,5 +98,15 @@ int sys_exit_accept4(struct trace_event_raw_sys_exit *ctx) {
 SEC("tracepoint/syscalls/sys_exit_accept")
 int sys_exit_accept(struct trace_event_raw_sys_exit *ctx) {
     accept_exit(&syscall_addr_id_map);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_connect")
+int sys_enter_connect(struct trace_event_raw_sys_enter *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    struct sockaddr *address = ((void *) ctx->args[1]);
+    struct addr_temp_t addr_temp = {};
+    addr_temp.addr = address;
+    addr_temp.sockfd = ctx->args[0];
     return 0;
 }
