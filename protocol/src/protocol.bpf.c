@@ -13,6 +13,13 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 
 #define PERF_MAX_STACK_DEPTH        127
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 4096);
+    __type(key, u32);
+    __type(value, u8);
+} listen_tgid SEC(".maps");
+
 struct addr_temp_t {
     struct sockaddr *addr;
     int sockfd;
@@ -32,13 +39,16 @@ struct {
 
 static inline void accept_enter(struct trace_event_raw_sys_enter *ctx, void *address_map, long int syscall_id) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tgid = pid_tgid >> 32;
     struct sockaddr *address = ((void *) ctx->args[1]);
+
     struct addr_temp_t addr_temp = {};
     addr_temp.addr = address;
     addr_temp.sockfd = ctx->args[0];
     struct addr_temp_key_t key = {};
     key.pid_tgid = pid_tgid;
     key.syscall_id = syscall_id;
+
     bpf_map_update_elem(address_map, &key, &addr_temp, BPF_ANY);
 }
 
@@ -61,14 +71,20 @@ struct {
 } address_ringbuf SEC(".maps");
 
 
-static inline void accept_exit(void *address_map, long int syscall_id) {
+static inline void accept_exit(void *address_map, struct trace_event_raw_sys_exit *exit) {
+    long int syscall_id = exit->id;
     u64 pid_tgid = bpf_get_current_pid_tgid();
     struct addr_temp_key_t key = {};
     key.pid_tgid = pid_tgid;
     key.syscall_id = syscall_id;
-    // filter tgid
+
     struct addr_temp_t *addr_temp = bpf_map_lookup_elem(address_map, &key);
     if (addr_temp == NULL) {
+        return;
+    }
+    // Check return value is 0
+    if (exit->ret != 0) {
+        bpf_map_delete_elem(address_map, &key);
         return;
     }
     struct sockaddr *address = BPF_PROBE_READ(addr_temp, addr);
@@ -88,14 +104,13 @@ static inline void accept_exit(void *address_map, long int syscall_id) {
 
 SEC("tracepoint/syscalls/sys_exit_accept4")
 int sys_exit_accept4(struct trace_event_raw_sys_exit *ctx) {
-    long int syscall_id = ctx->id;
-    accept_exit(&syscall_addr_id_map, syscall_id);
+    accept_exit(&syscall_addr_id_map, ctx);
     return 0;
 }
 
 SEC("tracepoint/syscalls/sys_exit_accept")
 int sys_exit_accept(struct trace_event_raw_sys_exit *ctx) {
-    accept_exit(&syscall_addr_id_map, ctx->id);
+    accept_exit(&syscall_addr_id_map, ctx);
     return 0;
 }
 
