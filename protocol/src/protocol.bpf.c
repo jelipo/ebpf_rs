@@ -39,16 +39,21 @@ struct {
 
 static inline void accept_enter(struct trace_event_raw_sys_enter *ctx, void *address_map, long int syscall_id) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
+    // filter tgid
     u32 tgid = pid_tgid >> 32;
+    if (bpf_map_lookup_elem(&listen_tgid, &tgid) == NULL) {
+        return;
+    }
     struct sockaddr *address = ((void *) ctx->args[1]);
 
     struct addr_temp_t addr_temp = {};
     addr_temp.addr = address;
     addr_temp.sockfd = ctx->args[0];
+
     struct addr_temp_key_t key = {};
     key.pid_tgid = pid_tgid;
     key.syscall_id = syscall_id;
-
+    // save to cache
     bpf_map_update_elem(address_map, &key, &addr_temp, BPF_ANY);
 }
 
