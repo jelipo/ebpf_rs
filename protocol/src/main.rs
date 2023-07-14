@@ -5,7 +5,9 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
-use libbpf_rs::RingBufferBuilder;
+use byteorder::ByteOrder;
+use clap::Parser;
+use libbpf_rs::{MapFlags, RingBufferBuilder};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use plain::Plain;
 
@@ -19,13 +21,28 @@ mod protocol {
     include!("./protocol.bpf.rs");
 }
 
+#[derive(Debug, Copy, Clone, Parser)]
+#[clap(name = "offcputime", about = "trace pid offcputime")]
+struct Command {
+    /// trace pid
+    #[clap(short = 'p', long)]
+    pid: u32,
+}
+
 fn main() -> Result<()> {
+    let cmd = Command::parse();
     // 初始化
     common::bump_memlock_rlimit()?;
     let builder = ProtocolSkelBuilder::default();
     let open_skel = builder.open()?;
     let mut skel = open_skel.load()?;
     skel.attach()?;
+
+    let mut maps = skel.maps_mut();
+
+    if let Err(err) = maps.listen_tgid().update(&cmd.pid.to_le_bytes(), &[0], MapFlags::ANY) {
+        println!("{}", err);
+    }
 
     let maps = skel.maps();
     let mut rbb = RingBufferBuilder::new();
@@ -47,28 +64,39 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+const ADDR_TYPE_CONNECT: u8 = 1;
+const ADDR_TYPE_ACCEPT: u8 = 2;
+
 //SAFE: ELF64Header satisfies all the requirements of `Plain`.
 unsafe impl Plain for addr_info_t {}
 
 fn ip(buf: &[u8]) -> Result<()> {
     let addr_info = plain::from_bytes::<addr_info_t>(buf)
         .map_err(to_err)?;
+
     let ip_addr = match AddressFamily::from_repr(addr_info.family as usize) {
         Some(AddressFamily::Inet) => unsafe {
-            IpAddr::V4(Ipv4Addr::from(addr_info.ip_info.ip.ipv4_be.to_le()))
+            println!("ipv4");
+            IpAddr::V4(Ipv4Addr::from(u32::from_be(addr_info.ip_info.ip.ipv4_be)))
         }
         Some(AddressFamily::Inet6) => unsafe {
-            let x = addr_info.ip_info.ip.ipv6_be;
-
-            let ip = u128::from_be_bytes(addr_info.ip_info.ip.ipv6_be);
-            match ip >> 32 {
-                0xFFFF => IpAddr::V4(Ipv4Addr::from(ip as u32)),
-                _ => IpAddr::V6(Ipv6Addr::from(ip))
-            }
+            println!("ipv6");
+            let ipv6 = u128::from_be_bytes(addr_info.ip_info.ip.ipv6_be);
+            IpAddr::V6(Ipv6Addr::from(ipv6))
         }
         None => return Ok(()),
     };
     let addr = SocketAddr::new(ip_addr, addr_info.ip_info.port_le);
-    println!("{}", addr);
+    let tgid = addr_info.pid_tgid >> 32;
+    match addr_info.addr_type {
+        ADDR_TYPE_CONNECT => {
+            println!("TGID: {} --->{}", tgid, addr);
+        }
+        ADDR_TYPE_ACCEPT => {
+            println!("{} ---> TGID:{}", addr, tgid);
+        }
+        _ => return Ok(())
+    }
+
     Ok(())
 }
