@@ -76,11 +76,9 @@ fn ip(buf: &[u8]) -> Result<()> {
 
     let ip_addr = match AddressFamily::from_repr(addr_info.family as usize) {
         Some(AddressFamily::Inet) => unsafe {
-            println!("ipv4");
             IpAddr::V4(Ipv4Addr::from(u32::from_be(addr_info.ip_info.ip.ipv4_be)))
         }
         Some(AddressFamily::Inet6) => unsafe {
-            println!("ipv6");
             let ipv6 = u128::from_be_bytes(addr_info.ip_info.ip.ipv6_be);
             IpAddr::V6(Ipv6Addr::from(ipv6))
         }
@@ -89,13 +87,9 @@ fn ip(buf: &[u8]) -> Result<()> {
     let addr = SocketAddr::new(ip_addr, addr_info.ip_info.port_le);
     let tgid = addr_info.pid_tgid >> 32;
     match addr_info.addr_type {
-        ADDR_TYPE_CONNECT => {
-            println!("TGID: {} --->{}", tgid, addr);
-        }
-        ADDR_TYPE_ACCEPT => {
-            println!("{} ---> TGID:{}", addr, tgid);
-        }
-        _ => return Ok(())
+        ADDR_TYPE_CONNECT => println!("TGID: {} --->{}", tgid, addr),
+        ADDR_TYPE_ACCEPT => println!("{} ---> TGID:{}", addr, tgid),
+        _ => return Ok(()),
     }
 
     Ok(())

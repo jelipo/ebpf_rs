@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: protocol-deployment
+  labels:
+    app: protocol
+spec:
+  selector:
+    matchLabels:
+      app: protocol
+  template:
+    metadata:
+      labels:
+        app: protocol
+    spec:
+      containers:
+        - name: protocol
+          image: ubuntu:latest
+          volumeMounts:
+            - mountPath: /app/
+              name: debug_dir
+      volumes:
+        - name: debug_dir
+          hostPath:
+            path: /home/me/CLionProjects/ebpf_rs/target/debug/

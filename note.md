@@ -9,3 +9,14 @@ sudo cat /sys/kernel/debug/tracing/trace_pipe
 ```bash
 cat /sys/kernel/debug/tracing/events/syscalls/xxx/format
 ```
+
+### minikube
+
+```shell
+minikube start --driver=virtualbox --nodes=3
+```
+
+#### stop
+```shell
+minikube stop && minikube delete
+```
