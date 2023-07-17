@@ -17,10 +17,7 @@ use plain::Plain;
 
 use common::err::to_err;
 use common::net::AddressFamily;
-
-use crate::protocol::protocol_bss_types::addr_info_t;
-use crate::protocol::ProtocolSkelBuilder;
-
+use crate::pre::PreBpfProg;
 
 
 #[derive(Debug, Copy, Clone, Parser)]
@@ -36,12 +33,9 @@ fn main() -> Result<()> {
     // 初始化
     common::bump_memlock_rlimit()?;
 
+    let pre_bpf_prog = PreBpfProg::new()?;
+    let listen_tgid_fd = pre_bpf_prog.tgid_map_fd();
 
-    let mut maps = skel.maps_mut();
-
-    if let Err(err) = maps.listen_tgid().update(&cmd.pid.to_le_bytes(), &[0], MapFlags::ANY) {
-        println!("{}", err);
-    }
 
     let maps = skel.maps();
     let mut rbb = RingBufferBuilder::new();

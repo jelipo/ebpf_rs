@@ -2,6 +2,7 @@ use std::os::fd::{AsFd, AsRawFd, RawFd};
 
 use clap::Parser;
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
+use anyhow::Result;
 
 use crate::pre::protocol::{ProtocolSkel, ProtocolSkelBuilder};
 
@@ -13,18 +14,18 @@ pub struct PreBpfProg<'a> {
     skel: ProtocolSkel<'a>,
 }
 
-impl PreBpfProg {
-    pub fn new() -> PreBpfProg {
+impl PreBpfProg<'_> {
+    pub fn new<'a>() -> Result<PreBpfProg<'a>> {
         let builder = ProtocolSkelBuilder::default();
         let mut open_skel = builder.open()?;
         let mut skel = open_skel.load()?;
         skel.attach()?;
-        PreBpfProg {
+        Ok(PreBpfProg {
             skel,
-        }
+        })
     }
 
-    pub fn pid_tgid_map_fd(&self) -> RawFd {
+    pub fn tgid_map_fd(&self) -> RawFd {
         self.skel.maps().listen_tgid().as_fd().as_raw_fd()
     }
 }
