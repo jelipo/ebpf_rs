@@ -5,18 +5,12 @@
 #include <bpf/bpf_endian.h>
 #include "def.h"
 #include "socket_def.h"
-#include "net/ip.h"
+#include "ip.h"
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
 #define PERF_MAX_STACK_DEPTH      127
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 4096);
-    __type(key, u32);
-    __type(value, u8);
-} listen_tgid SEC(".maps");
 
 struct addr_temp_value_t {
     struct sockaddr *addr;

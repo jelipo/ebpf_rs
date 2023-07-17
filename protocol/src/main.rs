@@ -1,6 +1,9 @@
 #![feature(slice_group_by)]
 
+mod pre;
+
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::os::fd::AsFd;
 use std::thread;
 use std::time::Duration;
 
@@ -8,6 +11,7 @@ use anyhow::Result;
 use byteorder::ByteOrder;
 use clap::Parser;
 use libbpf_rs::{MapFlags, RingBufferBuilder};
+use libbpf_rs::libbpf_sys::bpf_map__fd;
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use plain::Plain;
 
@@ -17,9 +21,7 @@ use common::net::AddressFamily;
 use crate::protocol::protocol_bss_types::addr_info_t;
 use crate::protocol::ProtocolSkelBuilder;
 
-mod protocol {
-    include!("./protocol.bpf.rs");
-}
+
 
 #[derive(Debug, Copy, Clone, Parser)]
 #[clap(name = "offcputime", about = "trace pid offcputime")]
@@ -33,10 +35,7 @@ fn main() -> Result<()> {
     let cmd = Command::parse();
     // 初始化
     common::bump_memlock_rlimit()?;
-    let builder = ProtocolSkelBuilder::default();
-    let open_skel = builder.open()?;
-    let mut skel = open_skel.load()?;
-    skel.attach()?;
+
 
     let mut maps = skel.maps_mut();
 
@@ -87,7 +86,7 @@ fn ip(buf: &[u8]) -> Result<()> {
     let addr = SocketAddr::new(ip_addr, addr_info.ip_info.port_le);
     let tgid = addr_info.pid_tgid >> 32;
     match addr_info.addr_type {
-        ADDR_TYPE_CONNECT => println!("TGID: {} --->{}", tgid, addr),
+        ADDR_TYPE_CONNECT => println!("TGID: {} ---> {}", tgid, addr),
         ADDR_TYPE_ACCEPT => println!("{} ---> TGID:{}", addr, tgid),
         _ => return Ok(()),
     }

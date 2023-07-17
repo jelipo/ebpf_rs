@@ -25,3 +25,10 @@ struct addr_info_t {
 };
 
 const struct addr_info_t *unused __attribute__((unused));
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 4096);
+    __type(key, u32);
+    __type(value, u8);
+} listen_tgid SEC(".maps");
