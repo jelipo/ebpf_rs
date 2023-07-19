@@ -37,7 +37,7 @@ fn build_single_bpf(c_file_path: &Path) -> Result<()> {
     let result: libbpf_cargo::Result<()> =
         SkeletonBuilder::new().source(&bpf_c).debug(true).clang_args("-I../include/ -I./src/bpf/include/").build_and_generate(bpf_rs);
     if let Err(err) = result {
-        println!("{}", err);
+        println!("err:{}", err);
         panic!("{}", err.to_string());
     }
     println!("cargo:rerun-if-changed={}", bpf_c);
