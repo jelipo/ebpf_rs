@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
+use libbpf_rs::RingBufferBuilder;
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use crate::container::ContainerSkelBuilder;
 
@@ -38,22 +39,26 @@ fn main() -> Result<()> {
     let mut skel = open_skel.load()?;
     skel.attach()?;
 
-    // let maps = skel.maps();
-    // let mut rbb = RingBufferBuilder::new();
-    // rbb.add(maps.address_ringbuf(), move |buf| {
-    //     if let Err(err) = ip(buf) {
-    //         println!("{}", err.to_string());
-    //     }
-    //     0
-    // })?;
-    // let address_ringbuf = rbb.build()?;
-    // let handle = thread::spawn(move || {
-    //     loop {
-    //         if let Err(err) = address_ringbuf.poll(Duration::MAX) {
-    //             println!("poll error: {}", err);
-    //         }
-    //     }
-    // });
+    let maps = skel.maps();
+
+
+
+    let mut rbb = RingBufferBuilder::new();
+    rbb.add(maps.address_ringbuf(), move |buf| {
+        if let Err(err) = ip(buf) {
+            println!("{}", err.to_string());
+        }
+        0
+    })?;
+    let address_ringbuf = rbb.build()?;
+    let i = address_ringbuf.epoll_fd();
+    let handle = thread::spawn(move || {
+        loop {
+            if let Err(err) = address_ringbuf.poll(Duration::MAX) {
+                println!("poll error: {}", err);
+            }
+        }
+    });
     thread::sleep(Duration::MAX);
     Ok(())
 }

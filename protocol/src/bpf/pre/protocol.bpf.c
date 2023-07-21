@@ -5,6 +5,7 @@
 #include <bpf/bpf_endian.h>
 #include "def.h"
 #include "socket_def.h"
+#include "share.h"
 #include "ip.h"
 
 char __license[] SEC("license") = "Dual MIT/GPL";
@@ -29,16 +30,11 @@ struct {
     __type(value, struct addr_temp_value_t);
 } syscall_addr_id_map SEC(".maps");
 
-struct {
-    __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 24);
-} address_ringbuf SEC(".maps");
-
 static inline void record_addr_temp(struct trace_event_raw_sys_enter *ctx, void *address_map) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     // filter tgid
     u32 tgid = pid_tgid >> 32;
-    if (bpf_map_lookup_elem(&listen_tgid, &tgid) == NULL) {
+    if (bpf_map_lookup_elem(&deny_tgid, &tgid) == NULL) {
         return;
     }
     struct sockaddr *address = ((void *) ctx->args[1]);
