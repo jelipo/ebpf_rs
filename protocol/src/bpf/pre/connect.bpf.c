@@ -34,7 +34,7 @@ static inline void record_addr_temp(struct trace_event_raw_sys_enter *ctx, void 
     u64 pid_tgid = bpf_get_current_pid_tgid();
     // filter tgid
     u32 tgid = pid_tgid >> 32;
-    if (bpf_map_lookup_elem(&deny_tgid, &tgid) == NULL) {
+    if (bpf_map_lookup_elem(&deny_tgid, &tgid) != NULL) {
         return;
     }
     struct sockaddr *address = ((void *) ctx->args[1]);
@@ -46,6 +46,7 @@ static inline void record_addr_temp(struct trace_event_raw_sys_enter *ctx, void 
     struct addr_temp_key_t key = {};
     key.pid_tgid = pid_tgid;
     key.syscall_id = ctx->id;
+
     // save to cache
     bpf_map_update_elem(address_map, &key, &addr_temp, BPF_ANY);
 }
