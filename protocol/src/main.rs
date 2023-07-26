@@ -58,14 +58,11 @@ fn main() -> Result<()> {
         0
     })?;
     let address_ringbuf = rbb.build()?;
-    let handle = thread::spawn(move || {
-        loop {
-            if let Err(err) = address_ringbuf.poll(Duration::MAX) {
-                println!("poll error: {}", err);
-            }
+    loop {
+        if let Err(err) = address_ringbuf.poll(Duration::MAX) {
+            println!("poll error: {}", err);
         }
-    });
-    thread::sleep(Duration::MAX);
+    }
     Ok(())
 }
 
