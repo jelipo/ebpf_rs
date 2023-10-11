@@ -7,12 +7,13 @@ use anyhow::{anyhow, Result};
 use byteorder::{ByteOrder, NativeEndian};
 use clap::Parser;
 use libbpf_rs::MapFlags;
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 
 use common::stack::kallsyms::KallsymsCache;
 use common::stack::procsyms::ProcsymsCache;
 
-use crate::offcputime::offcputime_bss_types::key_t;
 use crate::offcputime::{OffcputimeMaps, OffcputimeSkelBuilder};
+use crate::offcputime::offcputime_bss_types::key_t;
 
 mod offcputime {
     include!("./offcputime.bpf.rs");

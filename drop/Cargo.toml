@@ -10,5 +10,5 @@ libbpf-cargo = "0.21.1"
 common = { path = "../common" }
 libbpf-rs = "0.21.1"
 anyhow = "1.0"
-clap = { version = "4.3", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 nix = "0.26"

@@ -14,7 +14,7 @@ struct key_t {
     u8 comm[16];
 };
 
-// 用于暂存到map的struck
+// 用于暂存到map的struct
 struct temp_key_t {
     u32 tgid;
     u32 pid;
